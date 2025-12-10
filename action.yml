@@ -1,0 +1,96 @@
+name: "Todo Tree"
+description: "Scans PRs for TODO comments and posts them as a comment"
+author: "alexandretrotel"
+
+branding:
+  icon: "check-square"
+  color: "blue"
+
+inputs:
+  github-token:
+    description: "GitHub token for posting comments"
+    required: true
+    default: ${{ github.token }}
+  path:
+    description: "Path to scan"
+    required: false
+    default: "."
+  tags:
+    description: "Comma-separated tags to search for"
+    required: false
+    default: "TODO,FIXME,BUG"
+  include-patterns:
+    description: "File patterns to include"
+    required: false
+  fail-on-todos:
+    description: "Fail the action if TODOs are found"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install todo-tree
+      shell: bash
+      run: |
+        curl -fsSL https://github.com/alexandretrotel/todo-tree/releases/latest/download/todo-tree-x86_64-unknown-linux-gnu.tar.gz | tar xz
+        chmod +x todo-tree
+
+    - name: Scan for TODOs
+      id: scan
+      shell: bash
+      run: |
+        # Run todo-tree and capture JSON output
+        ./todo-tree --format json ${{ inputs.path }} > todos.json || true
+
+    - name: Post PR Comment
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          const todos = JSON.parse(fs.readFileSync('todos.json', 'utf8'));
+
+          // Format the comment
+          let body = '## TODO Summary\n\n';
+
+          if (todos.files && todos.files.length > 0) {
+            body += `Found **${todos.summary.total}** TODOs in this PR:\n\n`;
+
+            for (const file of todos.files) {
+              body += `### \`${file.path}\`\n`;
+              for (const todo of file.todos) {
+                body += `- **${todo.tag}** (line ${todo.line}): ${todo.text}\n`;
+              }
+              body += '\n';
+            }
+          } else {
+            body += 'No TODOs found!\n';
+          }
+
+          // Find and update or create comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.find(c =>
+            c.body.includes('## TODO Summary')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+          }
