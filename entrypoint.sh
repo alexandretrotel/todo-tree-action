@@ -37,6 +37,9 @@ install_todo_tree() {
                 BINARY="todo-tree-x86_64-unknown-linux-gnu.tar.gz"
             elif [ "$OS" = "darwin" ]; then
                 BINARY="todo-tree-x86_64-apple-darwin.tar.gz"
+            else
+                log_error "Unsupported OS: $OS"
+                exit 1
             fi
             ;;
         aarch64|arm64)
@@ -44,6 +47,9 @@ install_todo_tree() {
                 BINARY="todo-tree-aarch64-unknown-linux-gnu.tar.gz"
             elif [ "$OS" = "darwin" ]; then
                 BINARY="todo-tree-aarch64-apple-darwin.tar.gz"
+            else
+                log_error "Unsupported OS: $OS"
+                exit 1
             fi
             ;;
         *)
@@ -53,13 +59,26 @@ install_todo_tree() {
     esac
 
     DOWNLOAD_URL="https://github.com/alexandretrotel/todo-tree/releases/latest/download/${BINARY}"
+    TMP_DIR=$(mktemp -d)
+    log_info "Downloading todo-tree to temporary directory $TMP_DIR..."
 
-    if ! curl -fsSL "$DOWNLOAD_URL" | tar xz; then
-        log_error "Failed to download todo-tree from $DOWNLOAD_URL"
+    # Download and extract
+    if ! curl -fsSL "$DOWNLOAD_URL" | tar -xz -C "$TMP_DIR"; then
+        log_error "Failed to download or extract todo-tree from $DOWNLOAD_URL"
         exit 1
     fi
 
-    chmod +x todo-tree
+    # Find the binary
+    TODO_BINARY=$(find "$TMP_DIR" -type f -name "todo-tree" | head -n 1)
+    if [ -z "$TODO_BINARY" ]; then
+        log_error "todo-tree binary not found in the archive"
+        exit 1
+    fi
+
+    chmod +x "$TODO_BINARY"
+
+    # Copy to current working directory
+    cp "$TODO_BINARY" ./todo-tree
     log_success "todo-tree installed successfully"
 }
 
