@@ -1,86 +1,9 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-install_todo_tree() {
-    log_info "Installing todo-tree..."
-
-    # Detect architecture
-    ARCH=$(uname -m)
-    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-
-    case "$ARCH" in
-        x86_64)
-            if [ "$OS" = "linux" ]; then
-                BINARY="todo-tree-x86_64-unknown-linux-gnu.tar.gz"
-            elif [ "$OS" = "darwin" ]; then
-                BINARY="todo-tree-x86_64-apple-darwin.tar.gz"
-            else
-                log_error "Unsupported OS: $OS"
-                exit 1
-            fi
-            ;;
-        aarch64|arm64)
-            if [ "$OS" = "linux" ]; then
-                BINARY="todo-tree-aarch64-unknown-linux-gnu.tar.gz"
-            elif [ "$OS" = "darwin" ]; then
-                BINARY="todo-tree-aarch64-apple-darwin.tar.gz"
-            else
-                log_error "Unsupported OS: $OS"
-                exit 1
-            fi
-            ;;
-        *)
-            log_error "Unsupported architecture: $ARCH"
-            exit 1
-            ;;
-    esac
-
-    DOWNLOAD_URL="https://github.com/alexandretrotel/todo-tree/releases/latest/download/${BINARY}"
-    TMP_DIR=$(mktemp -d)
-    log_info "Downloading todo-tree to temporary directory $TMP_DIR..."
-
-    # Download and extract
-    if ! curl -fsSL "$DOWNLOAD_URL" | tar -xz -C "$TMP_DIR"; then
-        log_error "Failed to download or extract todo-tree from $DOWNLOAD_URL"
-        exit 1
-    fi
-
-    # Find the binary
-    TODO_BINARY=$(find "$TMP_DIR" -type f -name "todo-tree" | head -n 1)
-    if [ -z "$TODO_BINARY" ]; then
-        log_error "todo-tree binary not found in the archive"
-        exit 1
-    fi
-
-    chmod +x "$TODO_BINARY"
-
-    # Copy to current working directory
-    cp "$TODO_BINARY" ./todo-tree
-    log_success "todo-tree installed successfully"
-}
+# Source shared installation script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/install.sh"
 
 get_changed_files() {
     local base_ref="$1"
@@ -153,14 +76,13 @@ scan_todos() {
 
         if [ -z "$changed_files" ]; then
             log_info "No changed files to scan"
-            echo '{"files":[],"summary":{"total":0,"by_tag":{},"by_priority":{}}}' > todos.json
+            echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
             return 0
         fi
 
         log_info "Changed files: $changed_files"
 
         # Scan each changed file individually and merge results
-        local all_results='{"files":[],"summary":{"total":0,"by_tag":{},"by_priority":{}}}'
         local total_todos=0
         local files_json="[]"
 
@@ -168,7 +90,7 @@ scan_todos() {
             if [ -f "$file" ]; then
                 log_info "Scanning: $file"
                 local result
-                result=$($cmd "$file" 2>/dev/null || echo '{"files":[],"summary":{"total":0}}')
+                result=$($cmd "$file" 2>/dev/null || echo '{"files":[],"summary":{"total_count":0}}')
 
                 # Extract files array and merge
                 local file_todos
@@ -177,17 +99,17 @@ scan_todos() {
 
                 # Count totals
                 local file_total
-                file_total=$(echo "$result" | jq -r '.summary.total // 0')
+                file_total=$(echo "$result" | jq -r '.summary.total_count // 0')
                 total_todos=$((total_todos + file_total))
             fi
         done
 
-        # Build final result
-        echo "{\"files\":$files_json,\"summary\":{\"total\":$total_todos}}" | jq '.' > todos.json
+        # Build final result using binary format
+        echo "{\"files\":$files_json,\"summary\":{\"total_count\":$total_todos}}" | jq '.' > todos.json
     else
         # Scan entire path
         log_info "Scanning path: ${scan_path:-.}"
-        $cmd "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total":0}}' > todos.json
+        $cmd "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
     fi
 
     log_success "Scan complete"
@@ -209,7 +131,7 @@ find_new_todos() {
         return 0
     }
 
-    ./todo-tree scan --json . > todos_base.json 2>/dev/null || echo '{"files":[],"summary":{"total":0}}' > todos_base.json
+    ./todo-tree scan --json . > todos_base.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0}}' > todos_base.json
 
     # Return to head
     git checkout - --quiet 2>/dev/null || true
@@ -220,13 +142,13 @@ find_new_todos() {
     # A TODO is "new" if it doesn't exist in the base branch at the same file:line
     jq -s '
         (.[1].files // []) as $base_files |
-        (.[1].files // [] | [.[] | .todos[] | {key: "\(.path):\(.line)", value: .}] | from_entries) as $base_lookup |
+        (.[1].files // [] | [.[] | .items[] | {key: "\(.path):\(.line)", value: .}] | from_entries) as $base_lookup |
         .[0] | .files = [
             .files[] |
-            .todos = [.todos[] | select($base_lookup["\(.path // empty):\(.line)"] == null)] |
-            select(.todos | length > 0)
+            .items = [.items[] | select($base_lookup["\(.path // empty):\(.line)"] == null)] |
+            select(.items | length > 0)
         ] |
-        .summary.total = ([.files[].todos | length] | add // 0) |
+        .summary.total_count = ([.files[].items | length] | add // 0) |
         .summary.new_only = true
     ' todos.json todos_base.json > todos_new.json 2>/dev/null || cp todos.json todos_new.json
 
@@ -243,8 +165,8 @@ generate_annotations() {
     jq -r --argjson max "$max_annotations" '
         .files[]? |
         .path as $path |
-        .todos[:$max][] |
-        "::warning file=\($path),line=\(.line)::\(.tag): \(.text)"
+        .items[:$max][] |
+        "::warning file=\($path),line=\(.line)::\(.tag): \(.message)"
     ' todos.json 2>/dev/null | head -n "$max_annotations"
 }
 
@@ -254,10 +176,10 @@ check_fail_conditions() {
     local max_todos="$3"
 
     local total
-    total=$(jq -r '.summary.total // 0' todos.json)
+    total=$(jq -r '.summary.total_count // 0' todos.json)
 
     local fixme_count
-    fixme_count=$(jq -r '[.files[]?.todos[]? | select(.tag == "FIXME" or .tag == "BUG")] | length' todos.json 2>/dev/null || echo "0")
+    fixme_count=$(jq -r '[.files[]?.items[]? | select(.tag == "FIXME" or .tag == "BUG")] | length' todos.json 2>/dev/null || echo "0")
 
     # Check fail conditions
     if [ "$fail_on_todos" = "true" ] && [ "$total" -gt 0 ]; then
@@ -279,8 +201,9 @@ check_fail_conditions() {
 }
 
 set_outputs() {
+    # Using binary format: .summary.total_count
     local total
-    total=$(jq -r '.summary.total // 0' todos.json)
+    total=$(jq -r '.summary.total_count // 0' todos.json)
 
     local files_count
     files_count=$(jq -r '.files | length' todos.json 2>/dev/null || echo "0")

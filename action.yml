@@ -16,9 +16,9 @@ inputs:
     required: false
     default: "."
   tags:
-    description: "Comma-separated tags to search for (e.g., TODO,F IXME,BUG,HACK)"
+    description: "Comma-separated tags to search for (e.g., TODO,FIXME,BUG,HACK)"
     required: false
-    default: ""
+    default: "TODO,FIXME,BUG"
   include-patterns:
     description: "Comma-separated file patterns to include (e.g., *.rs,*.ts)"
     required: false
@@ -129,7 +129,7 @@ runs:
             body += '> Showing TODOs in **changed files** only\n\n';
           }
 
-          const total = todos.summary?.total || 0;
+          const total = todos.summary?.total_count || 0;
           const files = todos.files || [];
 
           if (files.length > 0 && total > 0) {
@@ -138,9 +138,9 @@ runs:
             // Group by priority/tag for better visualization
             const byTag = {};
             for (const file of files) {
-              for (const todo of (file.todos || [])) {
-                if (!byTag[todo.tag]) byTag[todo.tag] = [];
-                byTag[todo.tag].push({ ...todo, path: file.path });
+              for (const item of (file.items || [])) {
+                if (!byTag[item.tag]) byTag[item.tag] = [];
+                byTag[item.tag].push({ ...item, path: file.path });
               }
             }
 
@@ -155,12 +155,12 @@ runs:
             // Show details by file
             body += '<details open>\n<summary>Details by file</summary>\n\n';
             for (const file of files) {
-              if (file.todos && file.todos.length > 0) {
+              if (file.items && file.items.length > 0) {
                 body += `#### \`${file.path}\`\n`;
-                for (const todo of file.todos) {
-                  const priority = todo.priority || 'normal';
-                  const icon = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🔵';
-                  body += `- ${icon} **${todo.tag}** (L${todo.line}): ${todo.text}\n`;
+                for (const item of file.items) {
+                  const priority = item.priority || 'Medium';
+                  const icon = priority === 'Critical' ? '🔴' : priority === 'High' ? '🔴' : priority === 'Medium' ? '🟡' : '🔵';
+                  body += `- ${icon} **${item.tag}** (L${item.line}): ${item.message}\n`;
                 }
                 body += '\n';
               }
