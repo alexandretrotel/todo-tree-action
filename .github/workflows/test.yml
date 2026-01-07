@@ -1,0 +1,196 @@
+name: Test Action
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-installation:
+    name: Test Installation on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run installation test script
+        run: |
+          echo "Testing on $(uname -s) $(uname -m)"
+          bash test/test-install.sh
+
+  test-action-basic:
+    name: Test Basic Action
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create test files with TODOs
+        run: |
+          mkdir -p test-workspace
+          cat > test-workspace/example.rs << 'EOF'
+          // TODO: This is a test TODO
+          fn main() {
+              // FIXME: This needs to be fixed
+              println!("Hello, world!");
+              // BUG: This is a bug comment
+          }
+          EOF
+
+          cat > test-workspace/example.ts << 'EOF'
+          // TODO: TypeScript test
+          function test() {
+              // HACK: Quick fix
+              console.log("test");
+          }
+          EOF
+
+      - name: Run action (basic scan)
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test-workspace
+          tags: TODO,FIXME,BUG,HACK
+          include-patterns: "*.rs,*.ts"
+          show-annotations: true
+          post-comment: false
+          fail-on-todos: false
+
+  test-action-fail-conditions:
+    name: Test Fail Conditions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Create test file with FIXME
+        run: |
+          mkdir -p test-workspace
+          echo "// FIXME: This should cause failure" > test-workspace/test.rs
+
+      - name: Run action (should fail on FIXME)
+        id: action
+        uses: ./
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test-workspace
+          fail-on-fixme: true
+          post-comment: false
+
+      - name: Check that action failed
+        if: steps.action.outcome != 'failure'
+        run: |
+          echo "Action should have failed on FIXME but didn't"
+          exit 1
+
+      - name: Verify outputs
+        if: steps.action.outcome == 'failure'
+        run: |
+          echo "✓ Action correctly failed on FIXME"
+          echo "Total TODOs found: ${{ steps.action.outputs.total }}"
+
+  test-action-outputs:
+    name: Test Action Outputs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Create multiple test files
+        run: |
+          mkdir -p test-workspace
+          echo "// TODO: First" > test-workspace/file1.rs
+          echo "// TODO: Second" > test-workspace/file2.rs
+          echo "// FIXME: Third" > test-workspace/file3.rs
+
+      - name: Run action and capture outputs
+        id: scan
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test-workspace
+          post-comment: false
+
+      - name: Verify outputs
+        run: |
+          echo "Total: ${{ steps.scan.outputs.total }}"
+          echo "Files: ${{ steps.scan.outputs.files_count }}"
+          echo "Has TODOs: ${{ steps.scan.outputs.has_todos }}"
+
+          if [ "${{ steps.scan.outputs.total }}" != "3" ]; then
+            echo "Expected 3 TODOs, got ${{ steps.scan.outputs.total }}"
+            exit 1
+          fi
+
+          if [ "${{ steps.scan.outputs.files_count }}" != "3" ]; then
+            echo "Expected 3 files, got ${{ steps.scan.outputs.files_count }}"
+            exit 1
+          fi
+
+          if [ "${{ steps.scan.outputs.has_todos }}" != "true" ]; then
+            echo "Expected has_todos to be true"
+            exit 1
+          fi
+
+          echo "✓ All outputs are correct"
+
+  test-architecture-detection:
+    name: Test on ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: macos-latest
+            arch: x86_64
+          - os: macos-14  # M1/ARM
+            arch: aarch64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Show system info
+        run: |
+          echo "OS: $(uname -s)"
+          echo "Architecture: $(uname -m)"
+          echo "Expected: ${{ matrix.arch }}"
+
+      - name: Create test file
+        run: |
+          mkdir -p test-workspace
+          echo "// TODO: Test on ${{ matrix.arch }}" > test-workspace/test.rs
+
+      - name: Run action
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test-workspace
+          post-comment: false
+
+      - name: Verify binary was installed
+        run: |
+          if [ -f "./todo-tree" ]; then
+            echo "✓ Binary installed successfully"
+            ./todo-tree --version || echo "Version check skipped"
+          else
+            echo "✗ Binary not found"
+            exit 1
+          fi
