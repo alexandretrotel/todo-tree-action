@@ -107,7 +107,7 @@ scan_todos() {
         # Build final result using binary format
         echo "{\"files\":$files_json,\"summary\":{\"total_count\":$total_todos}}" | jq '.' > todos.json
     else
-        # Scan entire path - binary output format is used directly
+        # Scan entire path
         log_info "Scanning path: ${scan_path:-.}"
         $cmd "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
     fi
@@ -140,7 +140,6 @@ find_new_todos() {
 
     # Compare and find new TODOs using jq
     # A TODO is "new" if it doesn't exist in the base branch at the same file:line
-    # Using binary format: .files[].items instead of .files[].todos
     jq -s '
         (.[1].files // []) as $base_files |
         (.[1].files // [] | [.[] | .items[] | {key: "\(.path):\(.line)", value: .}] | from_entries) as $base_lookup |
@@ -163,7 +162,6 @@ generate_annotations() {
     log_info "Generating GitHub annotations..."
 
     # Read todos and generate annotation commands
-    # Using binary format: .files[].items and .message
     jq -r --argjson max "$max_annotations" '
         .files[]? |
         .path as $path |
@@ -177,11 +175,9 @@ check_fail_conditions() {
     local fail_on_fixme="$2"
     local max_todos="$3"
 
-    # Using binary format: .summary.total_count
     local total
     total=$(jq -r '.summary.total_count // 0' todos.json)
 
-    # Using binary format: .files[].items
     local fixme_count
     fixme_count=$(jq -r '[.files[]?.items[]? | select(.tag == "FIXME" or .tag == "BUG")] | length' todos.json 2>/dev/null || echo "0")
 
