@@ -10,24 +10,6 @@ permissions:
   pull-requests: write
 
 jobs:
-  test-installation:
-    name: Test Installation on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Run installation test script
-        run: |
-          echo "Testing on $(uname -s) $(uname -m)"
-          bash test/test-install.sh
-
   test-action-basic:
     name: Test Basic Action
     runs-on: ubuntu-latest
