@@ -35,7 +35,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: atrtde/todo-tree-action@v2
+      - uses: atrtde/todo-tree-action@v1.0.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -43,7 +43,7 @@ jobs:
 ## Common Options
 
 ```yaml
-- uses: atrtde/todo-tree-action@v2
+- uses: atrtde/todo-tree-action@v1.0.3
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     changed-only: true
