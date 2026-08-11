@@ -8,6 +8,12 @@ install_todo_tree() {
     local OS
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 
+    case "$OS" in
+        mingw*|msys*|cygwin*)
+            OS="windows"
+            ;;
+    esac
+
     local binary
     case "$ARCH" in
         x86_64)
@@ -15,6 +21,8 @@ install_todo_tree() {
                 binary="todo-tree-x86_64-unknown-linux-gnu.tar.gz"
             elif [ "$OS" = "darwin" ]; then
                 binary="todo-tree-x86_64-apple-darwin.tar.gz"
+            elif [ "$OS" = "windows" ]; then
+                binary="todo-tree-x86_64-pc-windows-msvc.zip"
             else
                 log_error "Unsupported OS: $OS"
                 return 1
@@ -26,7 +34,7 @@ install_todo_tree() {
             elif [ "$OS" = "darwin" ]; then
                 binary="todo-tree-aarch64-apple-darwin.tar.gz"
             else
-                log_error "Unsupported OS: $OS"
+                log_error "Unsupported OS: $OS (no aarch64 build available)"
                 return 1
             fi
             ;;
@@ -43,14 +51,26 @@ install_todo_tree() {
 
     log_info "Downloading todo-tree to temporary directory $tmp_dir..."
 
-    if ! curl -fsSL "$download_url" | tar -xz -C "$tmp_dir"; then
-        log_error "Failed to download or extract todo-tree from $download_url"
-        rm -rf "$tmp_dir"
-        return 1
+    if [[ "$binary" == *.zip ]]; then
+        local archive_path="$tmp_dir/archive.zip"
+        if ! curl -fsSL "$download_url" -o "$archive_path" || ! unzip -q "$archive_path" -d "$tmp_dir"; then
+            log_error "Failed to download or extract todo-tree from $download_url"
+            rm -rf "$tmp_dir"
+            return 1
+        fi
+    else
+        if ! curl -fsSL "$download_url" | tar -xz -C "$tmp_dir"; then
+            log_error "Failed to download or extract todo-tree from $download_url"
+            rm -rf "$tmp_dir"
+            return 1
+        fi
     fi
 
     local todo_binary
     todo_binary=$(find "$tmp_dir" -type f -name "todo-tree" | head -n 1)
+    if [ -z "$todo_binary" ]; then
+        todo_binary=$(find "$tmp_dir" -type f -name "todo-tree.exe" | head -n 1)
+    fi
     if [ -z "$todo_binary" ]; then
         todo_binary=$(find "$tmp_dir" -type f -name "todo-tree-*" | head -n 1)
     fi
@@ -75,16 +95,21 @@ install_todo_tree() {
         return 1
     fi
 
-    chmod +x "$todo_binary"
-    cp "$todo_binary" ./todo-tree
+    local target="./todo-tree"
+    if [ "$OS" = "windows" ]; then
+        target="./todo-tree.exe"
+    fi
 
-    if [ ! -f ./todo-tree ]; then
+    chmod +x "$todo_binary"
+    cp "$todo_binary" "$target"
+
+    if [ ! -f "$target" ]; then
         log_error "Failed to copy binary to current directory"
         rm -rf "$tmp_dir"
         return 1
     fi
 
-    chmod +x ./todo-tree
+    chmod +x "$target"
     rm -rf "$tmp_dir"
 
     log_success "todo-tree installed successfully"
