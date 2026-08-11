@@ -2,6 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/src/logs.sh"
 source "$SCRIPT_DIR/src/install.sh"
 source "$SCRIPT_DIR/src/inputs.sh"
 source "$SCRIPT_DIR/src/diff.sh"
