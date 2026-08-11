@@ -9,18 +9,18 @@ scan_todos() {
     local base_ref="$6"
     local head_ref="$7"
 
-    local cmd="./todo-tree scan --json"
+    local cmd=(./todo-tree scan --json)
 
     if [ -n "$tags" ]; then
-        cmd="$cmd --tags $tags"
+        cmd+=(--tags "$tags")
     fi
 
     if [ -n "$include_patterns" ]; then
-        cmd="$cmd --include $include_patterns"
+        cmd+=(--include "$include_patterns")
     fi
 
     if [ -n "$exclude_patterns" ]; then
-        cmd="$cmd --exclude $exclude_patterns"
+        cmd+=(--exclude "$exclude_patterns")
     fi
 
     if [ "$changed_only" = "true" ] && [ -n "$base_ref" ]; then
@@ -37,29 +37,30 @@ scan_todos() {
 
         log_info "Changed files: $changed_files"
 
-        local total_todos=0
-        local files_json="[]"
+        local results=()
 
         for file in $changed_files; do
             if [ -f "$file" ]; then
                 log_info "Scanning: $file"
                 local result
-                result=$($cmd "$file" 2>/dev/null || echo '{"files":[],"summary":{"total_count":0}}')
-
-                local file_todos
-                file_todos=$(echo "$result" | jq -r '.files // []')
-                files_json=$(echo "$files_json" | jq --argjson new "$file_todos" '. + $new')
-
-                local file_total
-                file_total=$(echo "$result" | jq -r '.summary.total_count // 0')
-                total_todos=$((total_todos + file_total))
+                result=$("${cmd[@]}" "$file" 2>/dev/null || echo '{"files":[],"summary":{"total_count":0}}')
+                results+=("$result")
             fi
         done
 
-        echo "{\"files\":$files_json,\"summary\":{\"total_count\":$total_todos}}" | jq '.' > todos.json
+        if [ ${#results[@]} -eq 0 ]; then
+            echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
+        else
+            printf '%s\n' "${results[@]}" | jq -s '
+                {
+                    files: (map(.files // []) | add),
+                    summary: { total_count: (map(.summary.total_count // 0) | add) }
+                }
+            ' > todos.json
+        fi
     else
         log_info "Scanning path: ${scan_path:-.}"
-        $cmd "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
+        "${cmd[@]}" "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
 
         if [ -n "$scan_path" ] && [ "$scan_path" != "." ]; then
             local prefix="${scan_path%/}"
