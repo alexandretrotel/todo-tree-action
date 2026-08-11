@@ -148,14 +148,13 @@ runs:
             body += criticalCount > 0 ? ` — **${criticalCount} Critical**\n\n` : '\n\n';
 
             body += '### Details\n\n';
-            body += `<details>\n<summary>View all ${total}</summary>\n\n`;
             body += '| Priority | Tag | Location | Message |\n|---|---|---|---|\n';
             for (const item of items) {
               const emoji = priorityEmoji[item.priority] || '⚪';
               const link = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${sha}/${item.path}#L${item.line}`;
               body += `| ${emoji} ${item.priority} | \`${item.tag}\` | [\`${item.path}:${item.line}\`](${link}) | ${item.message} |\n`;
             }
-            body += '\n</details>\n';
+            body += '\n';
           } else {
             body += 'No TODOs found!\n';
           }

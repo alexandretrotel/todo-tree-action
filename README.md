@@ -89,16 +89,11 @@ The PR comment groups items in a single table, sorted by priority, with an alert
 
 ### Details
 
-<details>
-<summary>View all 12</summary>
-
 | Priority | Tag | Location | Message |
 |---|---|---|---|
 | 🔴 Critical | `FIXME` | [`src/auth.rs:42`](https://github.com/owner/repo/blob/sha/src/auth.rs#L42) | Handle token refresh |
 | 🟠 High | `HACK` | [`src/db.rs:88`](https://github.com/owner/repo/blob/sha/src/db.rs#L88) | Replace with proper migration |
 | 🟡 Medium | `TODO` | [`src/api.rs:15`](https://github.com/owner/repo/blob/sha/src/api.rs#L15) | Implement error handling |
-
-</details>
 
 <sub>Last updated Aug 11, 2026, 00:00 UTC · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>
 ```
