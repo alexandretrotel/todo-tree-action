@@ -132,6 +132,47 @@ jobs:
 
           echo "✓ All outputs are correct"
 
+  test-action-comment-render:
+    name: Test PR Comment Render
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create test files across priorities
+        run: |
+          mkdir -p test-workspace
+          cat > test-workspace/auth.rs << 'EOF'
+          // FIXME: Handle token refresh
+          // BUG: Race condition on retry
+          EOF
+
+          cat > test-workspace/db.rs << 'EOF'
+          // HACK: Replace with proper migration
+          // WARN: Pool size not configurable
+          EOF
+
+          cat > test-workspace/api.rs << 'EOF'
+          // TODO: Implement error handling
+          // WIP: Pagination support
+          EOF
+
+          cat > test-workspace/notes.rs << 'EOF'
+          // NOTE: Document retry policy
+          // IDEA: Cache responses
+          EOF
+
+      - name: Run action (post comment)
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test-workspace
+          post-comment: true
+
   test-architecture-detection:
     name: Test on ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
