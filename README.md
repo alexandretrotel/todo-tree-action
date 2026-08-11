@@ -58,7 +58,7 @@ jobs:
 |-------|---------|-------|
 | `github-token` | `${{ github.token }}` | Token for PR comments |
 | `path` | `.` | Root path to scan |
-| `tags` | `TODO,WIP,MAYBE,FIXME,BUG,ERROR,HACK,WARN,WARNING,FIX,NOTE,XXX,INFO,DOCS,PERF,TEST,IDEA` | Comma-separated tags |
+| `tags` | _(all built-in tags, see below)_ | Comma-separated tags |
 | `include-patterns` | _(empty)_ | Include glob list |
 | `exclude-patterns` | _(empty)_ | Exclude glob list |
 | `changed-only` | `false` | Scan only changed files |
@@ -69,6 +69,9 @@ jobs:
 | `show-annotations` | `true` | Create GitHub annotations |
 | `max-annotations` | `50` | GitHub limit is 50 |
 | `post-comment` | `true` | Post a new PR comment each run |
+
+Default `tags` value (17 built-in tags):
+`TODO`, `WIP`, `MAYBE`, `FIXME`, `BUG`, `ERROR`, `HACK`, `WARN`, `WARNING`, `FIX`, `NOTE`, `XXX`, `INFO`, `DOCS`, `PERF`, `TEST`, `IDEA`
 
 ## Outputs
 
