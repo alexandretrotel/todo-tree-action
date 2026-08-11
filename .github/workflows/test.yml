@@ -173,6 +173,44 @@ jobs:
           path: test-workspace
           post-comment: true
 
+  test-action-annotations:
+    name: Test GitHub Annotations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run action (with annotations)
+        id: scan
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: fixtures
+          tags: TODO,FIXME
+          show-annotations: true
+          max-annotations: 10
+          post-comment: false
+          fail-on-todos: false
+
+      - name: Verify annotation commands were emitted
+        run: |
+          source src/annotations.sh
+          generate_annotations 10 > annotations.log
+          cat annotations.log
+
+          if ! grep -q "::warning file=.*sample.rs,line=1::TODO: First fixture todo" annotations.log; then
+            echo "Missing expected TODO annotation"
+            exit 1
+          fi
+
+          if ! grep -q "::warning file=.*sample.rs,line=3::FIXME: Second fixture fixme" annotations.log; then
+            echo "Missing expected FIXME annotation"
+            exit 1
+          fi
+
+          echo "✓ Annotations generated correctly"
+
   test-architecture-detection:
     name: Test on ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
