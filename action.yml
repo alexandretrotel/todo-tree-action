@@ -59,6 +59,10 @@ inputs:
     description: "Post a summary comment on the PR"
     required: false
     default: "true"
+  update-comment:
+    description: "Update existing summary comment instead of posting new one each run"
+    required: false
+    default: "true"
 
 outputs:
   total:
@@ -110,6 +114,7 @@ runs:
             return;
           }
 
+          const marker = '<!-- todo-tree-action -->';
           const header = '## Todo Tree Summary';
           const changedOnly = '${{ inputs.changed-only }}' === 'true';
           const newOnly = '${{ inputs.new-only }}' === 'true';
@@ -170,6 +175,28 @@ runs:
           }) + ' UTC';
 
           body += `\n<sub>Last updated ${readableDate} · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>`;
+          body += `\n${marker}`;
+
+          const updateComment = '${{ inputs.update-comment }}' === 'true';
+
+          if (updateComment) {
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+              console.log('Updated existing comment');
+              return;
+            }
+          }
 
           await github.rest.issues.createComment({
             owner: context.repo.owner,
