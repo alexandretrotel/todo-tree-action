@@ -68,7 +68,8 @@ jobs:
 | `max-todos` | _(empty)_ | Fail if count exceeds this value |
 | `show-annotations` | `true` | Create GitHub annotations |
 | `max-annotations` | `50` | GitHub limit is 50 |
-| `post-comment` | `true` | Post a new PR comment each run |
+| `post-comment` | `true` | Post a PR summary comment |
+| `update-comment` | `true` | Update the existing summary comment instead of posting a new one each run |
 
 Default `tags` value (17 built-in tags):
 `TODO`, `WIP`, `MAYBE`, `FIXME`, `BUG`, `ERROR`, `HACK`, `WARN`, `WARNING`, `FIX`, `NOTE`, `XXX`, `INFO`, `DOCS`, `PERF`, `TEST`, `IDEA`
