@@ -66,18 +66,13 @@ install_todo_tree() {
         fi
     fi
 
-    local todo_binary
-    todo_binary=$(find "$tmp_dir" -type f -name "todo-tree" | head -n 1)
-    if [ -z "$todo_binary" ]; then
-        todo_binary=$(find "$tmp_dir" -type f -name "todo-tree.exe" | head -n 1)
-    fi
-    if [ -z "$todo_binary" ]; then
-        todo_binary=$(find "$tmp_dir" -type f -name "todo-tree-*" | head -n 1)
+    local expected_name="todo-tree"
+    if [ "$OS" = "windows" ]; then
+        expected_name="todo-tree.exe"
     fi
 
-    if [ -z "$todo_binary" ]; then
-        todo_binary=$(find "$tmp_dir" -type f -executable | head -n 1)
-    fi
+    local todo_binary
+    todo_binary=$(find "$tmp_dir" -type f -name "$expected_name" | head -n 1)
 
     if [ -z "$todo_binary" ]; then
         log_error "todo-tree binary not found in the archive"
