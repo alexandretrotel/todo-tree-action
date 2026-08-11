@@ -147,7 +147,8 @@ runs:
             body += `> [!WARNING]\n> Found **${total}** TODO(s) across **${files.length}** file(s)${scopeNote}`;
             body += criticalCount > 0 ? ` — **${criticalCount} Critical**\n\n` : '\n\n';
 
-            body += `<details${total <= 10 ? ' open' : ''}>\n<summary>View all ${total}</summary>\n\n`;
+            body += '### Details\n\n';
+            body += `<details>\n<summary>View all ${total}</summary>\n\n`;
             body += '| Priority | Tag | Location | Message |\n|---|---|---|---|\n';
             for (const item of items) {
               const emoji = priorityEmoji[item.priority] || '⚪';
@@ -159,7 +160,17 @@ runs:
             body += 'No TODOs found!\n';
           }
 
-          body += `\n<sub>Last updated ${new Date().toISOString()} · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>`;
+          const readableDate = new Date().toLocaleString('en-US', {
+            timeZone: 'UTC',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }) + ' UTC';
+
+          body += `\n<sub>Last updated ${readableDate} · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>`;
 
           await github.rest.issues.createComment({
             owner: context.repo.owner,

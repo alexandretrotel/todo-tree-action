@@ -87,6 +87,8 @@ The PR comment groups items in a single table, sorted by priority, with an alert
 > [!WARNING]
 > Found **12** TODO(s) across **5** file(s) — **2 Critical**
 
+### Details
+
 <details>
 <summary>View all 12</summary>
 
@@ -98,7 +100,7 @@ The PR comment groups items in a single table, sorted by priority, with an alert
 
 </details>
 
-<sub>Last updated 2026-08-11T00:00:00.000Z · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>
+<sub>Last updated Aug 11, 2026, 00:00 UTC · [todo-tree](https://github.com/alexandretrotel/todo-tree)</sub>
 ```
 
 ## Requirements
