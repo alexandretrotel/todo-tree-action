@@ -3,7 +3,7 @@
 get_changed_files() {
     local base_ref="$1"
     local head_ref="$2"
-    local file_patterns="$3"
+    local include_patterns="$3"
 
     log_info "Fetching changed files between $base_ref and $head_ref..."
 
@@ -14,9 +14,9 @@ get_changed_files() {
                     git diff --name-only --diff-filter=ACMRT "origin/$base_ref" 2>/dev/null || \
                     echo "")
 
-    if [ -n "$file_patterns" ]; then
+    if [ -n "$include_patterns" ]; then
         local filtered_files=""
-        IFS=',' read -ra PATTERNS <<< "$file_patterns"
+        IFS=',' read -ra PATTERNS <<< "$include_patterns"
         for file in $changed_files; do
             for pattern in "${PATTERNS[@]}"; do
                 pattern=$(echo "${pattern}" | xargs)
