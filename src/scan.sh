@@ -60,6 +60,11 @@ scan_todos() {
     else
         log_info "Scanning path: ${scan_path:-.}"
         $cmd "${scan_path:-.}" > todos.json 2>/dev/null || echo '{"files":[],"summary":{"total_count":0,"files_with_todos":0,"files_scanned":0,"tag_counts":{}}}' > todos.json
+
+        if [ -n "$scan_path" ] && [ "$scan_path" != "." ]; then
+            local prefix="${scan_path%/}"
+            jq --arg prefix "$prefix" '.files[]?.path |= ($prefix + "/" + .)' todos.json > todos.json.tmp && mv todos.json.tmp todos.json
+        fi
     fi
 
     log_success "Scan complete"
