@@ -195,6 +195,7 @@ jobs:
 
       - name: Verify annotation commands were emitted
         run: |
+          source src/logging.sh
           source src/annotations.sh
           generate_annotations 10 > annotations.log
           cat annotations.log
