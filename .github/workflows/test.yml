@@ -200,7 +200,6 @@ jobs:
           source src/logging.sh
           source src/annotations.sh
           generate_annotations 10 > annotations.log
-          cat annotations.log
 
           if ! grep -q "::warning file=.*sample.rs,line=1::TODO: First fixture todo" annotations.log; then
             echo "Missing expected TODO annotation"
